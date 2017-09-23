@@ -1,0 +1,21 @@
+sudo: required
+
+services:
+  - docker
+
+before_install:
+- mkdir io
+- docker run -it --rm -v $(pwd):/doc bukalapak/snowboard html -o io/index.html apiary.apib
+
+script:
+  echo nop
+
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: $GITHUB_TOKEN # Set in travis-ci.org dashboard
+  local_dir: io
+  target_branch: master
+  repo: cloudloyalty/cloudloyalty.github.io
+  on:
+    branch: travis
