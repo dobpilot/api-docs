@@ -623,7 +623,7 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
             + phoneNumber (string) - номер телефона клиента
             + purchaseId (string) - номер транзакции в системе партнера при покупку товара (чек в 1С)
             + refundAmount (number) - общая сумма возвращаемого товара 
-            + collectedBonuses (number) - расчетное количество бонусов, которые будут возвращены клиенту
+            + recoveredBonuses (number) - расчетное количество бонусов, которые будут возвращены клиенту
             + cancelledBonuses (number) - расчетное количество бонусов, которые будут аннулированы
 
     + Body
@@ -633,7 +633,7 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                   "phoneNumber":"+79251112223",
                   "purchaseId":"ATR0000000000001235",
                   "refundAmount":9000.00,
-                  "collectedBonuses":49,
+                  "recoveredBonuses":49,
                   "cancelledBonuses":9
                }
             }
@@ -709,7 +709,7 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
             + phoneNumber (number) - номер телефона клиента
             + refundId (string) - номер транзакции для возврата товара в системе партнера
             + refundAmount (number) - общая сумма возвращённого товара
-            + collectedBonuses (number) - количество возвращенных бонусов
+            + recoveredBonuses (number) - количество возвращенных бонусов
             + cancelledBonuses (number) - количество аннулированных бонусов
 
     + Body
@@ -719,7 +719,7 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                   "phoneNumber":"+79251112223",
                   "refundId":"ATR0000000000001236",
                   "refundAmount":9000.00,
-                  "collectedBonuses":0,
+                  "recoveredBonuses":0,
                   "cancelledBonuses":9
                }
             }
