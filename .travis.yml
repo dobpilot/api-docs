@@ -18,4 +18,4 @@ deploy:
   target_branch: master
   repo: cloudloyalty/cloudloyalty.github.io
   on:
-    branch: travis
+    branch: master
