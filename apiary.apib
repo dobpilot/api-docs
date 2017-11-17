@@ -512,7 +512,7 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
                     Если не указана, расчитывается как price * itemCount.
 
-        + requireConfirmationCode (boolean) - указывает, требуется ли подтверждение транзакции кодом, переданным в confirmationCode
+        + isConfirmationCodeRequired (boolean) - указывает, требуется ли подтверждение транзакции кодом, переданным в confirmationCode
         + confirmationCode (string) - код подтверждения, введенный клиентом (или со слов клиента)
 
             Отправка кода клиенту ранее должна быть запрошена вызовом метода /send-confirmation-code.
