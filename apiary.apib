@@ -106,6 +106,10 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 | 30        | Клиент с таким внешним идентификатором уже существует           |
 | 31        | Заказ не найден                                                 |
 | 32        | Заказ уже обработан                                             |
+| 33        | Промокод не найден                                              |
+| 34        | Условия промокода не выполнены                                  |
+| 35        | Промокод уже использован максимальное число раз                 |
+| 36        | Время действия промокода еще не наступило или уже прошло        |
 
 ## Создание бонусного счета клиента [/new-client]
 
@@ -342,7 +346,7 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
 ## Расчёт покупки [/calculate-purchase]
 
-Запрос расчета бонусов предназначен для предварительного расчёта количества бонусов к списанию и/или начислению при покупке с использованием системы лояльности. 
+Запрос расчета предназначен для предварительного расчёта количества бонусов к списанию и/или начислению при покупке с использованием системы лояльности, а также скидки при применении промокода. 
 
 Реального начисления/списания бонусов не происходит, система лояльности только делает расчёт.
 
@@ -401,6 +405,15 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
             Если задано, значение collectingAmount игнорируется.
 
+        + promocode (string) - промокод
+
+        + units (object) - позиции в чеке, каждая строка - отдельная единица товара
+            + *unit number* (object)
+                + sku (string, required) - артикул или другой номенклатурный идентификатор
+                + itemTitle (string, required) - наименование товара
+                + buyingPrice (number) - закупочная цена единицы
+                + price (number, required) - цена единицы
+
 + Request (application/json)
 
     + Headers
@@ -411,32 +424,91 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
     + Body
 
             {
-               "calculate":{
-                  "phoneNumber":"+79251112223",
-                  "totalAmount":50000.00,
-                  "loyaltyAction":"apply-collect"
-               }
+                "calculate": {
+                    "phoneNumber": "+79251112223",
+                    "totalAmount": 50000,
+                    "loyaltyAction": "apply-collect"
+                },
+                "promocode": "RUB600",
+                "units": {
+                    "1": {
+                        "sku": "MD775RU/A",
+                        "itemTitle": "Товар для продажи",
+                        "price": 20000
+                    },
+                    "2": {
+                        "sku": "MD775RU/A",
+                        "itemTitle": "Товар для продажи",
+                        "price": 20000
+                    },
+                    "3": {
+                        "sku": "MD775RU/B",
+                        "itemTitle": "Товар для продажи #2",
+                        "price": 10000
+                    }
+                }
             }
 
 + Response 200 (application/json)
 
     + Attributes (object)
         + calculation (object)
-            + phoneNumber (string) - номер телефона клиента
-            + totalAmount (number) - общая сумма
-            + collectableBonuses (number) - общая сумма бонусов, начисляемая на чек при выборе операции «Начисление»
-            + appliableBonuses (number) - максимальная сумма бонусов, доступная для списания по чеку при выборе операции «Списание»
+            + [deprecated] totalAmount (number) - сумма к оплате
+            + collectableBonuses (number, required) - общая сумма бонусов, начисляемая на чек при выборе операции «Начисление»
+            + appliableBonuses (number, required) - максимальная сумма бонусов, доступная для списания по чеку при выборе операции «Списание»
+            + [planned] promocodeDiscount (number) - скидка по промокоду
 
-    
+                Рассчитывается, только если в запросе переданы `units` и `promocode`.
+
+                Равна сумме `promocodeDiscount` из массива `calculatedUnits`.
+
+            + [planned] bonusesDiscount (number) - скидка по бонусам
+
+                Если в запросе переданы `units`, это значение равно сумме значений `bonusesDiscount` из массива `calculatedUnits`.
+
+            + [planned] totalDiscount (number, required) - сумма скидок
+            + [planned] remainingAmount (number, required) - сумма к оплате
+
+                Рассчитывается как `totalAmount` из запроса за вычетом `totalDiscount`.
+
+        + [planned] calculatedUnits (object, required) - позиции в чеке, каждая строка - отдельная единица товара
+            + *unit number* (object)
+                + originalPrice (number, required) - цена единицы
+                + promocodeDiscount (number) - скидка по промокоду
+                + bonusesDiscount (number) - скидка по бонусам
+                + totalDiscount (number, required) - сумма скидок
+                + calculatedPrice (number, required) - цена со скидкой
+
+                    Рассчитывается как originalPrice - totalDiscount. Не может быть меньше нуля.
+
     + Body
     
             {
-               "calculation":{
-                  "phoneNumber":"+79251112223",
-                  "totalAmount":49000.00,
-                  "collectableBonuses":1000,
-                  "appliableBonuses":4900
-               }
+                "calculation": {
+                    "collectableBonuses": 4840,
+                    "appliableBonuses": 1000,
+                    "promocodeDiscount": 600,
+                    "bonusesDiscount": 1000,
+                    "totalDiscount": 1600,
+                    "remainingAmount": 48400
+                },
+                "calculatedUnits": {
+                    "1": {
+                        "originalPrice": 20000,
+                        "promocodeDiscount": 240,
+                        "bonusesDiscount": 400
+                    },
+                    "2": {
+                        "originalPrice": 20000,
+                        "promocodeDiscount": 240,
+                        "bonusesDiscount": 400
+                    },
+                    "3": {
+                        "originalPrice": 10000,
+                        "promocodeDiscount": 120,
+                        "bonusesDiscount": 200
+                    }
+                }
             }
 
 ## Выполнение покупки [/apply-purchase]
@@ -509,9 +581,11 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
             Если задано, значение collectingAmount игнорируется.
 
+        + promocode (string) - промокод
+
         + items (array) - список позиций в чеке
             + (object)
-                + sku (string, required) - артикул товара
+                + sku (string, required) - артикул или другой номенклатурный идентификатор
                 + itemTitle (string, required) - название товара
                 + itemCount (number, required) - количество товара в чеке
                 + buyingPrice (number) - закупочная цена единицы товара
@@ -679,7 +753,7 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
         + cashierId (string) - табельный номер продавца, который оформил возврат товара 
         + items (array) - список товаров для возврата
             + (object)
-                + sku (string, required) - артикул товара для возврата
+                + sku (string, required) - артикул или другой номенклатурный идентификатор товара для возврата
                 + itemTitle (string, required) - название товара
                 + itemCount (number, required) - количество товара в чеке
                 + buyingPrice (number) - закупочная цена единицы товара
