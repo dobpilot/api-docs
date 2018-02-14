@@ -142,11 +142,19 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
             - ```11-21``` - если известен только день в году
 
         + card (string) - номер карты для привязки к клиенту
-        + city (string) - город
-        + street (string) - улица
+        + isEmailSubscribed (boolean) - флаг, подписан ли клиент на маркетинговые рассылки по электронной почте
+
+            Если не задан, считается равным true.
+
+        + isPhoneSubscribed (boolean) - флаг, подписан ли клиент на маркетинговые рассылки по SMS или Viber
+
+            Если не задан, считается равным true.
+
         + externalId (string) - идентификатор клиента, присваеваемый ему вызывающей системой (внешний идентификатор)
 
             Вызывающая сторона может присвоить каждому клиенту свой уникальный номер. Этот номер может использоваться в последующих вызовах для идентификации клиента, к которому относится вызываемая операция, наряду с другими идентификаторами - номером телефона и номером карты.
+
+        + extraFields (object) - перечень дополнительных полей для передачи в базу процессинга
 
 + Request (application/json)
 
@@ -293,9 +301,8 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
         + isEmailSubscribed (boolean) - новый флаг, подписан ли клиент на маркетинговые рассылки по электронной почте
         + isPhoneSubscribed (boolean) - новый флаг, подписан ли клиент на маркетинговые рассылки по SMS или Viber
-        + city (string) - новый город
-        + street (string) - новая улица
         + externalId (string) - новый внешний идентификатор клиента
+        + extraFields (object) - перечень дополнительных полей для передачи в базу процессинга
 
 + Request (application/json)
 
@@ -361,6 +368,7 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
         + phoneNumber (string) - номер телефона клиента, по которому нужно произвести расчёт продажи
         + card (string) - карта клиента
         + externalId (string) - внешний идентификатор клиента
+        + isAnonymousClient (boolean) - указывает, что запрос отправляется для покупки, не привязанной к конкретному клиенту (то есть без идентификации клиента по карте или номеру телефона)
 
         + loyaltyAction (string) - выбранная операция с бонусами по данному чеку
     
@@ -411,8 +419,13 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
             + *unit number* (object)
                 + sku (string, required) - артикул или другой номенклатурный идентификатор
                 + itemTitle (string, required) - наименование товара
+                + itemCount (number) - количество товара, используется для случаев, когда позицию невозможно разбить на единицы
+
+                    Если не задано, принимается равным 1.
+
                 + buyingPrice (number) - закупочная цена единицы
                 + price (number, required) - цена единицы
+
 
 + Request (application/json)
 
@@ -453,9 +466,12 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
     + Attributes (object)
         + calculation (object)
-            + [deprecated] totalAmount (number) - сумма к оплате
-            + collectableBonuses (number, required) - общая сумма бонусов, начисляемая на чек при выборе операции «Начисление»
-            + appliableBonuses (number, required) - максимальная сумма бонусов, доступная для списания по чеку при выборе операции «Списание»
+            + appliedBonuses (number, required) - кол-во примененных бонусов к покупке
+            + collectedBonuses (number, required) - кол-во бонусов, начисленных за покупку
+            + maxBonuses (number, required) - максимальное кол-во бонусов, которые можно применить к данной покупке
+
+                Учитываются ограничения программы лояльности и кол-во доступных бонусов у клиента.
+
             + [planned] promocodeDiscount (number) - скидка по промокоду
 
                 Рассчитывается, только если в запросе переданы `units` и `promocode`.
@@ -467,9 +483,14 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                 Если в запросе переданы `units`, это значение равно сумме значений `bonusesDiscount` из массива `calculatedUnits`.
 
             + [planned] totalDiscount (number, required) - сумма скидок
-            + [planned] remainingAmount (number, required) - сумма к оплате
+            + remainingAmount (number, required) - сумма к оплате (сумма за вычетом скидок)
 
                 Рассчитывается как `totalAmount` из запроса за вычетом `totalDiscount`.
+
+            + [deprecated] phoneNumber (string) - телефон клиента
+            + [deprecated] totalAmount (number) - то же, что `remainingAmount`
+            + [deprecated] collectableBonuses (number, required) - то же, что `collectedBonuses`
+            + [deprecated] appliableBonuses (number, required) - то же, что `appliedBonuses`
 
         + [planned] calculatedUnits (object, required) - позиции в чеке, каждая строка - отдельная единица товара
             + *unit number* (object)
@@ -485,8 +506,9 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
     
             {
                 "calculation": {
-                    "collectableBonuses": 4840,
-                    "appliableBonuses": 1000,
+                    "collectedBonuses": 4840,
+                    "appliedBonuses": 1000,
+                    "maxBonuses": 1500,
                     "promocodeDiscount": 600,
                     "bonusesDiscount": 1000,
                     "totalDiscount": 1600,
@@ -531,6 +553,8 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
         + phoneNumber (string) - номер телефона клиента, по которому производится продажа
         + card (string) - карта клиента
         + externalId (string) - внешний идентификатор клиента
+        + isAnonymousClient (boolean) - указывает, что запрос отправляется для покупки, не привязанной к конкретному клиенту (то есть без идентификации клиента по карте или номеру телефона)
+
         + id (string, required) - номер транзакции или чека в системе партнера (из 1С)
         + executedAt (string, required) - дата и время совершения транзакции
         + shopCode (string, required) - код магазина, в котором осуществляется операция
@@ -828,9 +852,6 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
 + Attributes
     + transaction (object, required)
-        + phoneNumber (string) - номер телефона клиента, по которому нужно произвести расчёт продажи
-        + card (string) - карта клиента
-        + externalId (string) - внешний идентификатор клиента
         + id (string, required) - номер транзакции отмены покупки в системе партнера (из 1С)
         + executedAt (string, required) - дата и время совершения транзакции 
         + purchaseId (string, required) - номер транзакции покупки в системе партнера (чек в 1С)
@@ -846,7 +867,6 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
             {
                "transaction":{
-                  "phoneNumber":"+79251112223",
                   "id":"ATR0000000000001236",
                   "executedAt":"2014-05-30T13:45:32+04:00",
                   "purchaseId":"ATR0000000000001235"
@@ -1016,6 +1036,8 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                 Отправка кода клиенту ранее должна быть запрошена вызовом метода /send-confirmation-code.
     
                 После успешного создания заказа код аннулируется, воспользоваться им повторно нельзя.
+
+        + promocode (string) - промокод
 
         + items (array) - список позиций заказа
             + (object)
