@@ -181,10 +181,31 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
     + Attributes (object)
         + client (object)
-            + phoneNumber (string) - номер телефона клиента
             + bonuses (number) -  баланс доступных бонусов
             + pendingBonuses (number) - баланс ожидаемых бонусов
-            + fullName (string) - фамилия, имя и отчество
+            + phoneNumber (string) - номер телефона клиента
+            + email (string) - адрес электронной почты клиента
+            + surname (string) - фамилия
+            + name (string) - имя
+            + patronymicName (string) - отчество
+            + fullName (string) - фамилия, имя и отчество одной строкой
+            + gender (number) - пол клиента
+
+                Значения:
+                - 0 - пол неизвестен,
+                - 1 - мужской,
+                - 2 - женский
+        
+            + birthdate (string) - дата рождения
+
+                Если год рождения неизвестен, возвращается 1900.
+
+            + card (string) - номер бонусной карты
+            + isEmailSubscribed (boolean) - флаг, подписан ли клиент на маркетинговые рассылки по электронной почте
+            + isPhoneSubscribed (boolean) - флаг, подписан ли клиент на маркетинговые рассылки по SMS или Viber
+            + externalId (string) - внешний идентификатор клиента
+            + extraFields (object) - дополнительные параметры клиента
+            + level (number) - уровень клиента в программе лояльности
         + bonuses (array)
             + (object)
                 + expireAt (string) - дата сгорания бонуса
@@ -349,10 +370,31 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
     + Attributes (object)
         + client (object)
-            + phoneNumber (string) - номер телефона клиента
             + bonuses (number) -  баланс доступных бонусов
             + pendingBonuses (number) - баланс ожидаемых бонусов
-            + fullName (string) - фамилия, имя и отчество
+            + phoneNumber (string) - номер телефона клиента
+            + email (string) - адрес электронной почты клиента
+            + surname (string) - фамилия
+            + name (string) - имя
+            + patronymicName (string) - отчество
+            + fullName (string) - фамилия, имя и отчество одной строкой
+            + gender (number) - пол клиента
+
+                Значения:
+                - 0 - пол неизвестен,
+                - 1 - мужской,
+                - 2 - женский
+        
+            + birthdate (string) - дата рождения
+
+                Если год рождения неизвестен, возвращается 1900.
+
+            + card (string) - номер бонусной карты
+            + isEmailSubscribed (boolean) - флаг, подписан ли клиент на маркетинговые рассылки по электронной почте
+            + isPhoneSubscribed (boolean) - флаг, подписан ли клиент на маркетинговые рассылки по SMS или Viber
+            + externalId (string) - внешний идентификатор клиента
+            + extraFields (object) - дополнительные параметры клиента
+            + level (number) - уровень клиента в программе лояльности
         + bonuses (array)
             + (object)
                 + expireAt (string) - дата сгорания бонуса
