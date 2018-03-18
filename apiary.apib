@@ -155,10 +155,11 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
             Вызывающая сторона может присвоить каждому клиенту свой уникальный номер. Этот номер может использоваться в последующих вызовах для идентификации клиента, к которому относится вызываемая операция, наряду с другими идентификаторами - номером телефона и номером карты.
 
         + extraFields (object) - перечень дополнительных полей для передачи в базу процессинга
+        + level (number) - уровень клиента в программе лояльности
 
 + Request (application/json)
 
-    + Headers
+    + Headersc
 
             Accept: application/json
             X-Processing-Key: 00000000-0000-0000-0000-000000000000
@@ -236,10 +237,32 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
     + Attributes (object)
         + client (object)
-            + phoneNumber (string) - номер телефона клиента
             + bonuses (number) -  баланс доступных бонусов
             + pendingBonuses (number) - баланс ожидаемых бонусов
-            + fullName (string) - фамилия, имя и отчество
+            + phoneNumber (string) - номер телефона клиента
+            + email (string) - адрес электронной почты клиента
+            + surname (string) - фамилия
+            + name (string) - имя
+            + patronymicName (string) - отчество
+            + fullName (string) - фамилия, имя и отчество одной строкой
+            + gender (number) - пол клиента
+
+                Значения:
+                - 0 - пол неизвестен,
+                - 1 - мужской,
+                - 2 - женский
+        
+            + birthdate (string) - дата рождения
+
+                Если год рождения неизвестен, возвращается 1900.
+
+            + card (string) - номер бонусной карты
+            + isEmailSubscribed (boolean) - флаг, подписан ли клиент на маркетинговые рассылки по электронной почте
+            + isPhoneSubscribed (boolean) - флаг, подписан ли клиент на маркетинговые рассылки по SMS или Viber
+            + externalId (string) - внешний идентификатор клиента
+            + extraFields (object) - дополнительные параметры клиента
+            + level (number) - уровень клиента в программе лояльности
+
         + bonuses (array)
             + (object)
                 + expireAt (string) - дата сгорания бонуса
@@ -303,6 +326,7 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
         + isPhoneSubscribed (boolean) - новый флаг, подписан ли клиент на маркетинговые рассылки по SMS или Viber
         + externalId (string) - новый внешний идентификатор клиента
         + extraFields (object) - перечень дополнительных полей для передачи в базу процессинга
+        + level (number) - новый уровень клиента в программе лояльности
 
 + Request (application/json)
 
@@ -425,6 +449,7 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
                 + buyingPrice (number) - закупочная цена единицы
                 + price (number, required) - цена единицы
+                + category (string) - название категории товара
 
 
 + Request (application/json)
@@ -440,9 +465,9 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                 "calculate": {
                     "phoneNumber": "+79251112223",
                     "totalAmount": 50000,
-                    "loyaltyAction": "apply-collect"
+                    "loyaltyAction": "apply-collect",
+                    "promocode": "RUB600"
                 },
-                "promocode": "RUB600",
                 "units": {
                     "1": {
                         "sku": "MD775RU/A",
@@ -472,17 +497,17 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
                 Учитываются ограничения программы лояльности и кол-во доступных бонусов у клиента.
 
-            + [planned] promocodeDiscount (number) - скидка по промокоду
+            + promocodeDiscount (number) - скидка по промокоду
 
                 Рассчитывается, только если в запросе переданы `units` и `promocode`.
 
                 Равна сумме `promocodeDiscount` из массива `calculatedUnits`.
 
-            + [planned] bonusesDiscount (number) - скидка по бонусам
+            + bonusesDiscount (number) - скидка по бонусам
 
                 Если в запросе переданы `units`, это значение равно сумме значений `bonusesDiscount` из массива `calculatedUnits`.
 
-            + [planned] totalDiscount (number, required) - сумма скидок
+            + totalDiscount (number, required) - сумма скидок
             + remainingAmount (number, required) - сумма к оплате (сумма за вычетом скидок)
 
                 Рассчитывается как `totalAmount` из запроса за вычетом `totalDiscount`.
@@ -492,7 +517,7 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
             + [deprecated] collectableBonuses (number, required) - то же, что `collectedBonuses`
             + [deprecated] appliableBonuses (number, required) - то же, что `appliedBonuses`
 
-        + [planned] calculatedUnits (object, required) - позиции в чеке, каждая строка - отдельная единица товара
+        + calculatedUnits (object, required) - позиции в чеке, каждая строка - отдельная единица товара
             + *unit number* (object)
                 + originalPrice (number, required) - цена единицы
                 + promocodeDiscount (number) - скидка по промокоду
@@ -605,7 +630,13 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
             Если задано, значение collectingAmount игнорируется.
 
-        + promocode (string) - промокод
+        + promocode (object) - информация о примененном промокоде
+            + promocode (string, required) - промокод
+            + promocodeDiscount (number, required) - величина скидки по промокоду
+
+                Поле обязательно, если передан promocode.
+
+        + executedAt (string) - дата и время выполнения расчета
 
         + items (array) - список позиций в чеке
             + (object)
@@ -617,6 +648,8 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                 + amount (number) - сумма
 
                     Если не указана, рассчитывается как price * itemCount.
+
+                + category (string) - название категории товара
 
         + isConfirmationCodeRequired (boolean) - указывает, требуется ли подтверждение транзакции кодом, переданным в confirmationCode
         + confirmationCode (string) - код подтверждения, введенный клиентом (или со слов клиента)
