@@ -1309,8 +1309,6 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
 Возвращаемый массив отсортирован по дате операции от новых к старым.
 
-Список операций с бонусами в будущем может быть расширен.
-
 ### /get-history [POST]
 
 + Request (application/json)
@@ -1367,6 +1365,10 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                     - OPERATION_CANCELLED - отмена начисленных бонусов при возврате товара (расход)
                     - OPERATION_RECEIVED - начисление акционных бонусов (приход)
                     - OPERATION_RECALLED - отзыв акционных бонусов (расход)
+                    - OPERATION_APPLY_REVERTED - откат списанных бонусов при откате транзакции продажи (приход)
+                    - OPERATION_COLLECT_REVERTED - откат начисленных бонусов при откате транзакции продажи (расход)
+
+                    Список операций в будущем может быть расширен.
 
                 + operationName (string, required) - описание операции
 
@@ -1378,6 +1380,8 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                     - Отмена начисления
                     - Начисление по акции
                     - Отмена
+
+                    Список операций в будущем может быть расширен.Ф
 
                 + OPERATION_APPLIED (object)
                     + purchaseId (string, required) - идентификатор продажи
@@ -1418,6 +1422,16 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                         - Корректировка (ручное изменение счета из интерфейса CloudLoyaly)
 
                     + comment (string) - комментарий, оставленный оператором при корректировки счета
+
+                + OPERATION_APPLY_REVERTED (object)
+                    + purchaseId (string, required) - идентификатор продажи
+                    + executedAt (string, required) - дата продажи
+                    + totalAmount (number, required) - сумма покупки
+
+                + OPERATION_COLLECT_REVERTED (object)
+                    + purchaseId (string, required) - идентификатор продажи
+                    + executedAt (string, required) - дата продажи
+                    + totalAmount (number, required) - сумма покупки
 
         + pagination (object, required)
             + total (number, required) - сколько всего записей
