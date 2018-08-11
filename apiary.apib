@@ -493,7 +493,6 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                 + price (number, required) - цена единицы
                 + category (string) - название категории товара
 
-
 + Request (application/json)
 
     + Headers
@@ -508,23 +507,23 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                     "phoneNumber": "+79251112223",
                     "totalAmount": 50000,
                     "loyaltyAction": "apply-collect",
-                    "promocode": "RUB600"
-                },
-                "units": {
-                    "1": {
-                        "sku": "MD775RU/A",
-                        "itemTitle": "Товар для продажи",
-                        "price": 20000
-                    },
-                    "2": {
-                        "sku": "MD775RU/A",
-                        "itemTitle": "Товар для продажи",
-                        "price": 20000
-                    },
-                    "3": {
-                        "sku": "MD775RU/B",
-                        "itemTitle": "Товар для продажи #2",
-                        "price": 10000
+                    "promocode": "RUB600",
+                    "units": {
+                        "1": {
+                            "sku": "MD775RU/A",
+                            "itemTitle": "Товар для продажи",
+                            "price": 20000
+                        },
+                        "2": {
+                            "sku": "MD775RU/A",
+                            "itemTitle": "Товар для продажи",
+                            "price": 20000
+                        },
+                        "3": {
+                            "sku": "MD775RU/B",
+                            "itemTitle": "Товар для продажи #2",
+                            "price": 10000
+                        }
                     }
                 }
             }
@@ -554,11 +553,6 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
                 Рассчитывается как `totalAmount` из запроса за вычетом `totalDiscount`.
 
-            + [deprecated] phoneNumber (string) - телефон клиента
-            + [deprecated] totalAmount (number) - то же, что `remainingAmount`
-            + [deprecated] collectableBonuses (number, required) - то же, что `collectedBonuses`
-            + [deprecated] appliableBonuses (number, required) - то же, что `appliedBonuses`
-
         + calculatedUnits (object, required) - позиции в чеке, каждая строка - отдельная единица товара
             + *unit number* (object)
                 + originalPrice (number, required) - цена единицы
@@ -568,6 +562,11 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                 + calculatedPrice (number, required) - цена со скидкой
 
                     Рассчитывается как originalPrice - totalDiscount. Не может быть меньше нуля.
+
+        + clientBonuses (object, required) - информация о прогнозируемом состоянии счета клиента после покупки
+            + reserved (number, required) - количество зарезервированных бонусов
+            + available (number, required) - количество доступных для списания бонусов
+            + pending (number, required) - количество замороженных бонусовФ
 
     + Body
     
@@ -597,6 +596,11 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                         "promocodeDiscount": 120,
                         "bonusesDiscount": 200
                     }
+                },
+                "clientBonuses": {
+                    "reserved": 0,
+                    "available": 4840,
+                    "pending": 4840
                 }
             }
 
@@ -988,6 +992,13 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
     + phoneNumber (string) - номер телефона клиента
     + card (string) - карта клиента
     + externalId (string) - внешний идентификатор клиента
+    + isAnonymousClient (boolean) - указывает, что запрос отправляется для незарегистрированного клиента (то есть без идентификации клиента по карте или номеру телефона)
+
+        Если запрос делается для незарегистрированного клиента, обязательно указывается значение номера телефона в `to`.
+
+    + to (string) - номер телефона для отправки сообщения
+
+        Если не указан, сообщение отправляется на номер, ассоциированный с клиентом, для которого делается запрос.
 
 + Request (application/json)
 
