@@ -122,12 +122,6 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 ### /new-client [POST]
 
 + Attributes (object)
-    + shop (object) - точка продаж, в которой выдали карту
-        + code (string, required) - код магазина
-        + name (string, required) - полное название магазина
-    + cashier (object) - информация о сотруднике, который выдал карту
-        + id (string) - табельный номер
-        + name (string) - имя
     + client (object, required)
         + phoneNumber (string) - номер телефона клиента
         + email (string) - адрес электронной почты клиента
@@ -184,6 +178,13 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
                     - 2 - женский
 
                     Если не задан, определяется автоматически.
+
+    + shop (object) - точка продаж, в которой выдали карту
+        + code (string, required) - код магазина
+        + name (string, required) - полное название магазина
+    + cashier (object) - информация о сотруднике, который выдал карту
+        + code (string) - табельный номер
+        + name (string) - имя
 
 + Request (application/json)
 
