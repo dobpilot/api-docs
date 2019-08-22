@@ -941,7 +941,7 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
 ## Group 2 Продажа в рознице
 
-## 1 Расчёт покупки [/calculate-purchase]
+## 1 Расчёт покупки [/v2/calculate-purchase]
 
 Запрос расчета предназначен для предварительного расчёта количества бонусов к списанию и/или начислению при покупке с использованием системы лояльности, а также скидки при применении промокода. 
 
@@ -951,81 +951,66 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
 
 Делать запрос можно по номеру телефона клиента, по номеру карты или по внешнему идентификатору.
 
-### /calculate-purchase [POST]
+### /v2/calculate-purchase [POST]
 
 + Attributes (object)
-    + calculate (object, required)
-        + phoneNumber (string) - номер телефона клиента, по которому нужно произвести расчёт продажи
-        + card (string) - карта клиента
-        + externalId (string) - внешний идентификатор клиента
-        + isAnonymousClient (boolean) - указывает, что запрос отправляется для покупки, не привязанной к конкретному клиенту (то есть без идентификации клиента по карте или номеру телефона)
+    + calculationQuery (object, required) - данные чека или заказа для расчета
+        + client (object)
+            + phoneNumber (string) - номер телефона клиента, по которому нужно произвести расчёт продажи
+            + card (string) - карта клиента
+            + externalId (string) - внешний идентификатор клиента
 
-        + loyaltyAction (string) - выбранная операция с бонусами по данному чеку
-    
-            Возможны следующие значения:
-            - collect - бонусы будут только начислены для клиента
-            - apply - бонусы будут только списаны с клиента
-            - apply-collect - бонусы будут сначала списаны, а затем начислены на оставшуюся сумму для клиента
+        + shop (object, required) - данные о торговой точке
+            + code (string, required) - ID или код магазина, в котором осуществляется операция
+            + name (string, required) - полное название магазина, в котором осуществляется операция 
 
-        + totalAmount (number, required) - общая сумма чека
+        + cashier (object) - данные о кассире
+            + code (string, required) - ID или табельный номер продавца, который оформляет продажу товара
+            + name (string, required) - имя продавца, который оформляет продажу товара
 
-            Сумма к оплате клиентом.
+        + executedAt (string) - дата формирования чека или заказа
 
-            Игнорируется, если в запросе указаны `units`. В этом случае итого чека складывается из суммы значений amount всех строк.
+            По умолчанию используется текущие дата и время.
 
-            Если на стороне магазина предусмотрены скидки, эта сумма должна быть с учетом этих скидок.
+        + rows (array, required) - список строк чека или заказа
+            + (object) - строка чека для расчета
+                + id (string) - произвольный идентификатор строки, сервером не используется
+                + product (object, required) - данные о товаре/услуге
+                    + sku (string, required) - код номенклатуры или артикул
+                    + title (string) - наименование товара или услуги
+                    + category (string) - категория товара или услуги
 
-        + applyingAmount (number) - сумма для расчета применяемых бонусов
+                        Если используется несколько уровней вложенности категорий, в этой строке следует передать список наименований всех уровней, разделенных точкой с запятой.
 
-            Для указанной суммы будет рассчитано количество бонусов, которыми можно погасить покупку (если выбрана операция apply или apply-collect).
+                    + buyingPrice (number) - закупочная цена единицы товара
+                    + blackPrice (number, required) - обычная цена единицы товара или услуги
+                    + redPrice (number) - новая цена единицы товара или услуги
+                    + minPrice (number) - минимальная розничная цена единицы товара или услуги
+                + qty (number, required) - количество
+                + autoDiscount (number) - автоскидка, примененная к строке
 
-            Магазин может рассчитывать эту сумму как totalAmount, за вычетом стоимости товаров, к которым запрещено применять бонусы.
+                    Здесь задается величина скидки, уже примененная к позиции чека на вызывающей стороне.
 
-            Не может превышать totalAmount.
+                + manualDiscount (number) - ручная скидка, примененная к строке
 
-            Если не указана, считается равной totalAmount.
+                    Здесь задается величина скидки, уже примененная к позиции чека на вызывающей стороне.
 
-        + collectingAmount (number) - сумма для расчета начисляемых бонусов
+                + noApplyBonuses (boolean) - запрет применения бонусов к этой строке
+                + noCollectBonuses (boolean) - запрет начисления бонусов за эту строку
+                + noPromocode (boolean) - запрет применения скидки по промокоду к этой строке
+                + noOffer (boolean) - запрет применения акций к этой строке
+                + maxDiscount (number) - величина максимальной скидки для этой строки
 
-            Для указанной суммы будет рассчитано количество бонусов для накопления клиентом (если выбрана операция collect).
+        + applyBonuses (number) - количество бонусов, которое требуется списать
 
-            Магазин может рассчитывать эту сумму как totalAmount, за вычетом стоимости товаров, за которые запрещено начислять бонусы.
+            Если задано `auto`, будет списано максимально возможное количество. По умолчанию 0.
 
-            Если не указана, считается равной totalAmount.
+        + collectBonuses (number) - количество бонусов к начисление за текущий чек или заказ
 
-            Отношение collectingAmount к totalAmount будет учтено при расчете количества бонусов для начисления (если выбрана операция apply-collect).
-
-        + applyBonuses (number) - количество используемых бонусов для покупки
-
-            Не может превышать количество доступных бонусов клиента.
-
-            Если не задано, используются все доступные бонусы.
-
-        + collectBonuses (number) - количество бонусов, которые будут начислены клиенту за покупку, рассчитанное вызывающей стороной
-        
-            Если не задано, рассчитывается автоматически.
-
-            Если задано, значение collectingAmount игнорируется.
+            Если задано `auto`, расчет этого значения будет произведен по правилам, заданным на сервере. По умолчанию `auto`.
 
         + promocode (string) - промокод
-
-        + units (object) - позиции в чеке, каждая строка - отдельная единица товара
-            + *unit number* (object)
-                + sku (string, required) - артикул или другой номенклатурный идентификатор
-                + itemTitle (string, required) - наименование товара
-                + itemCount (number) - количество товара, используется для случаев, когда позицию невозможно разбить на единицы
-
-                    Если не задано, принимается равным 1.
-
-                + buyingPrice (number) - закупочная цена единицы
-                + price (number, required) - цена единицы
-                + amount (number) - сумма по строке
-
-                    Если не указана, рассчитывается как price * itemCount.
-
-                    Если на стороне магазина предусмотрены скидки, эта сумма должна быть с учетом этих скидок.
-
-                + category (string) - название категории товара
+        + discountRoundStep (number) - кратность округления суммы всех скидок
 
 + Request (application/json)
 
@@ -1041,220 +1026,193 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
              * Информация обо всех возможных полях - выше.
              */
             {
-                "calculate": {
-                    "phoneNumber": "+79251112223",
-                    "totalAmount": 50000,
-                    "loyaltyAction": "apply-collect",
-                    "promocode": "RUB600",
-                    "units": {
-                        "1": {
-                            "sku": "MD775RU/A",
-                            "itemTitle": "Товар для продажи",
-                            "price": 20000
-                        },
-                        "2": {
-                            "sku": "MD775RU/A",
-                            "itemTitle": "Товар для продажи",
-                            "price": 20000
-                        },
-                        "3": {
-                            "sku": "MD775RU/B",
-                            "itemTitle": "Товар для продажи #2",
-                            "price": 10000
-                        }
-                    }
-                }
+              "calculationQuery": {
+                "shop": {
+                  "code": "shop1",
+                  "name": "Shop 1"
+                },
+                "rows": [
+                  {
+                    "product": {
+                      "sku": "SKU1",
+                      "blackPrice": 1000
+                    },
+                    "qty": 1
+                  }
+                ],
+                "promocode": "300"
+              }
             }
 
 + Response 200 (application/json)
 
     + Attributes (object)
-        + calculation (object)
-            + appliedBonuses (number, required) - кол-во примененных бонусов к покупке
-            + collectedBonuses (number, required) - кол-во бонусов, начисленных за покупку
-            + maxBonuses (number, required) - максимальное кол-во бонусов, которые можно применить к данной покупке
+        + calculationResult (object) - результат расчета
+            + rows (array, required) - список строк чека, количество и порядок соответствует строкам из запроса
+                + (object)
+                    + id (string) - идентификатор строки как он передан в запросе
+                    + totalDiscount  (number, required) - сумма всех скидок по чеку
+                    + discounts (object, required)
+                        + auto (number, required) - автоскидка
+                        + manual (number, required) - ручная скидка
+                        + bonuses (number, required) - скидка по бонусам
+                        + promocode (number, required) - скидка по промокоду
+                        + offer (number, required) - скидка по акции
+                        + rounding (number, required) - округление
 
-                Учитываются ограничения программы лояльности и кол-во доступных бонусов у клиента.
+                    + bonuses (object) - результат расчета бонусов
+                        + applied (number, required) - применено
+                        + collected (number, required) - накоплено
 
-            + promocodeDiscount (number) - скидка по промокоду
+                    + offer (object) - информация об акции, примененной к строке
+                        + id (number, required) - внутренний идентификатор акции
+                        + code (string, required) - код
+                        + name (string, required) - название
 
-                Рассчитывается, только если в запросе переданы `units` и `promocode`.
+            + summary (object, required) - cводная информация по чеку
+                + totalDiscount (number, required) - сумма всех скидок по чеку
+                + discounts (object)
+                    + auto (number, required) - автоскидка
+                    + manual (number, required) - ручная скидка
+                    + bonuses (number, required) - скидка по бонусам
+                    + promocode (number, required) - скидка по промокоду
+                    + offer (number, required) - скидка по акции
+                    + rounding (number, required) - округление
 
-                Равна сумме `promocodeDiscount` из массива `calculatedUnits`.
+            + bonuses (object) - результат расчета бонусов
+                + applied (number, required) - применено
+                + collected (number, required) - накоплено
+                + maxToApply (number, required) - максимальное количество бонусов, которое можно применить к чеку
 
-            + bonusesDiscount (number) - скидка по бонусам
+                    Это значение расчитано на основе доступных бонусов на счету клиента и правил применения бонусов к чеку.
 
-                Если в запросе переданы `units`, это значение равно сумме значений `bonusesDiscount` из массива `calculatedUnits`.
+                + error (object) - ошибка применения бонусов
+                    + code (number, required) - код
+                    + description (string, required) - описание
+                    + hint (string) - детали ошибки
 
-            + totalDiscount (number, required) - сумма скидок
-            + remainingAmount (number, required) - сумма к оплате (сумма за вычетом скидок)
-
-                Рассчитывается как `totalAmount` из запроса за вычетом `totalDiscount`.
-
-        + calculatedUnits (object, required) - позиции в чеке, каждая строка - отдельная единица товара
-            + *unit number* (object)
-                + originalPrice (number, required) - цена единицы
-                + promocodeDiscount (number) - скидка по промокоду
-                + bonusesDiscount (number) - скидка по бонусам
-                + totalDiscount (number, required) - сумма скидок
-                + calculatedPrice (number, required) - цена со скидкой
-
-                    Рассчитывается как originalPrice - totalDiscount. Не может быть меньше нуля.
-
-        + clientBonuses (object, required) - информация о прогнозируемом состоянии счета клиента после покупки
-            + reserved (number, required) - количество зарезервированных бонусов
-            + available (number, required) - количество доступных для списания бонусов
-            + pending (number, required) - количество замороженных бонусов
+            + promocode (object)
+                + applied (boolean, required) - применен или нет
+                + error (object) - ошибка применения бонусов
+                    + code (number, required) - код
+                    + description (string, required) - описание
+                    + hint (string) - детали ошибки
 
     + Body
 
             {
-                "calculation": {
-                    "collectedBonuses": 4840,
-                    "appliedBonuses": 1000,
-                    "maxBonuses": 1500,
-                    "promocodeDiscount": 600,
-                    "bonusesDiscount": 1000,
-                    "totalDiscount": 1600,
-                    "remainingAmount": 48400
-                },
-                "calculatedUnits": {
-                    "1": {
-                        "originalPrice": 20000,
-                        "promocodeDiscount": 240,
-                        "bonusesDiscount": 400
-                    },
-                    "2": {
-                        "originalPrice": 20000,
-                        "promocodeDiscount": 240,
-                        "bonusesDiscount": 400
-                    },
-                    "3": {
-                        "originalPrice": 10000,
-                        "promocodeDiscount": 120,
-                        "bonusesDiscount": 200
+              "calculationResult": {
+                "rows": [
+                  {
+                    "totalDiscount": 0,
+                    "discounts": {
+                      "auto": 0,
+                      "manual": 0,
+                      "bonuses": 0,
+                      "promocode": 0,
+                      "offer": 0
                     }
+                  },
+                  {
+                    "totalDiscount": 150,
+                    "discounts": {
+                      "auto": 0,
+                      "manual": 0,
+                      "bonuses": 0,
+                      "promocode": 150,
+                      "offer": 0
+                    }
+                  }
+                ],
+                "summary": {
+                  "totalDiscount": 150,
+                  "discounts": {
+                    "auto": 0,
+                    "manual": 0,
+                    "bonuses": 0,
+                    "promocode": 150,
+                    "offer": 0
+                  }
                 },
-                "clientBonuses": {
-                    "reserved": 0,
-                    "available": 4840,
-                    "pending": 4840
+                "promocode": {
+                  "applied": true
                 }
+              }
             }
 
-## 2 Выполнение покупки [/apply-purchase]
+## 2 Пречек [/set-purchase]
 
-Метод выполняет операцию начисления и/или списания бонусов.
+Метод рассчитывает и предварительно создает продажу на сервере. Запрос идентичен запросу `/v2/calculate-purchase`, только добавлен параметр `txid` - идентификатор чека.
 
-Возможны три варианта работы с бонусами:
-- Только начисление бонусов клиенту 
-- Только списание бонусов с клиента
-- Сначала списать бонусы с клиента, а затем начислить на оставшуюся оплаченную денежными средствами сумму их снова.
+Касса вызывает этот метод, когда чек сформирован, но еще не проведен. Если изменяется состав товаров в чеке, скидки, суммы или другие параметры, касса повторно вызывает этот метод с прежним `txid` и новыми деталями чека.
 
-Для операций списания и списания-и-начисления в запросе передаются суммы списания бонусов на весь чек. Общая сумма списания бонусов не должны превышать значения, полученные в результате выполнения метода расчета покупки. Запрос предполагает наличие информации обо всех товарах в чеке и типе продажи.
+После успешного проведения чека продажа должна быть подтверждена методом `/confirm-ticket`.
 
-Делать запрос можно по номеру телефона клиента, по номеру карты или по внешнему идентификатору.
+Если чек аннулирован, необходимо вызывать метод `/discard-ticket`.
 
-### /apply-purchase [POST]
+Любая предварительно созданная продажа должна быть либо подтверждена, либо отменена. Неподтвержденная и неотмененная предварительная продажа автоматически отменяется сервером через некоторое время (по умолчанию - через 2 часа).
+
+### /set-purchase [POST]
 
 + Attributes (object)
-    + transaction (object, required)
-        + phoneNumber (string) - номер телефона клиента, по которому производится продажа
-        + card (string) - карта клиента
-        + externalId (string) - внешний идентификатор клиента
-        + isAnonymousClient (boolean) - указывает, что запрос отправляется для покупки, не привязанной к конкретному клиенту (то есть без идентификации клиента по карте или номеру телефона)
+    + txid (string, required) - идентификатор чека
+    + calculationQuery (object, required) - данные чека или заказа для расчета
+        + client (object)
+            + phoneNumber (string) - номер телефона клиента, по которому нужно произвести расчёт продажи
+            + card (string) - карта клиента
+            + externalId (string) - внешний идентификатор клиента
 
-        + id (string, required) - код транзакции или чека в системе партнера (из 1С)
+        + shop (object, required) - данные о торговой точке
+            + code (string, required) - ID или код магазина, в котором осуществляется операция
+            + name (string, required) - полное название магазина, в котором осуществляется операция 
 
-            Этот код должен быть уникальным среди всех продаж всех торговых точек.
+        + cashier (object) - данные о кассире
+            + code (string, required) - ID или табельный номер продавца, который оформляет продажу товара
+            + name (string, required) - имя продавца, который оформляет продажу товара
 
-        + receiptId (number) - порядковый номер чека
+        + executedAt (string) - дата формирования чека или заказа
 
-            Этот номер не обязательно должен быть уникальнымs.
+            По умолчанию используется текущие дата и время.
 
-        + executedAt (string, required) - дата и время совершения транзакции
-        + shopCode (string, required) - код магазина, в котором осуществляется операция
-        + shopName (string, required) - полное название магазина, в котором осуществляется операция 
-        + sessionId (number) - номер смены
-        + cashier (string) - имя продавца, который оформил продажу товара
-        + cashierId (string) - табельный номер продавца, который оформил продажу товара
+        + rows (array, required) - список строк чека или заказа
+            + (object) - строка чека для расчета
+                + id (string) - произвольный идентификатор строки, сервером не используется
+                + product (object, required) - данные о товаре/услуге
+                    + sku (string, required) - код номенклатуры или артикул
+                    + title (string) - наименование товара или услуги
+                    + category (string) - категория товара или услуги
 
-        + loyaltyAction (string, required) - выбранная операция с бонусами по данному чеку
-    
-            Возможны следующие значения:
-            - collect - бонусы будут только начислены для клиента
-            - apply - бонусы будут только списаны с клиента
-            - apply-collect - бонусы будут сначала списаны, а затем начислены на оставшуюся сумму для клиента
+                        Если используется несколько уровней вложенности категорий, в этой строке следует передать список наименований всех уровней, разделенных точкой с запятой.
 
-        + totalAmount (number, required) - общая сумма чека
+                    + buyingPrice (number) - закупочная цена единицы товара
+                    + blackPrice (number, required) - обычная цена единицы товара или услуги
+                    + redPrice (number) - новая цена единицы товара или услуги
+                    + minPrice (number) - минимальная розничная цена единицы товара или услуги
+                + qty (number, required) - количество
+                + autoDiscount (number) - автоскидка, примененная к строке
 
-            Сумма к оплате клиентом.
+                    Здесь задается величина скидки, уже примененная к позиции чека на вызывающей стороне.
 
-            Игнорируется, если в запросе указаны `items`. В этом случае итого чека складывается из суммы значений amount всех строк.
+                + manualDiscount (number) - ручная скидка, примененная к строке
 
-            Если на стороне магазина предусмотрены скидки, эта сумма должна быть с учетом этих скидок.
+                    Здесь задается величина скидки, уже примененная к позиции чека на вызывающей стороне.
 
-        + applyingAmount (number) - сумма для расчета применяемых бонусов
+                + noApplyBonuses (boolean) - запрет применения бонусов к этой строке
+                + noCollectBonuses (boolean) - запрет начисления бонусов за эту строку
+                + noPromocode (boolean) - запрет применения скидки по промокоду к этой строке
+                + noOffer (boolean) - запрет применения акций к этой строке
+                + maxDiscount (number) - величина максимальной скидки для этой строки
 
-            Для указанной суммы будет рассчитано количество бонусов, которыми можно погасить покупку (если выбрана операция apply или apply-collect).
+        + applyBonuses (number) - количество бонусов, которое требуется списать
 
-            Магазин может рассчитывать эту сумму как totalAmount, за вычетом стоимости товаров, к которым запрещено применять бонусы.
+            Если задано `auto`, будет списано максимально возможное количество. По умолчанию 0.
 
-            Не может превышать totalAmount.
+        + collectBonuses (number) - количество бонусов к начисление за текущий чек или заказ
 
-            Если не указана, считается равной totalAmount.
+            Если задано `auto`, расчет этого значения будет произведен по правилам, заданным на сервере. По умолчанию `auto`.
 
-        + collectingAmount (number) - сумма для расчета начисляемых бонусов
-
-            Для указанной суммы будет рассчитано количество бонусов для накопления клиентом (если выбрана операция collect).
-
-            Магазин может рассчитывать эту сумму как totalAmount, за вычетом стоимости товаров, за которые запрещено начислять бонусы.
-
-            Если не указана, считается равной totalAmount.
-
-            Отношение collectingAmount к totalAmount будет учтено при расчете количества бонусов для начисления (если выбрана операция apply-collect).
-
-        + applyBonuses (number, required) - количество используемых бонусов для покупки
-
-            Не может превышать количество доступных бонусов клиента.
-
-            Не может превышать максимальное количество бонусов к применению, рассчитанное на основе applyingAmount.
-
-        + collectBonuses (number) - количество бонусов, которые будут начислены клиенту за покупку, рассчитанное вызывающей стороной
-        
-            Если не задано, рассчитывается автоматически.
-
-            Если задано, значение collectingAmount игнорируется.
-
-        + promocode (object) - информация о примененном промокоде
-            + promocode (string, required) - промокод
-            + promocodeDiscount (number, required) - величина скидки по промокоду
-
-                Поле обязательно, если передан promocode.
-
-        + executedAt (string) - дата и время выполнения расчета
-
-        + items (array) - список позиций в чеке
-            + (object)
-                + sku (string, required) - артикул или другой номенклатурный идентификатор
-                + itemTitle (string, required) - название товара
-                + itemCount (number, required) - количество товара в чеке
-                + buyingPrice (number) - закупочная цена единицы товара
-                + price (number, required) - цена единицы товара
-                + amount (number) - сумма
-
-                    Если не указана, рассчитывается как price * itemCount.
-
-                    Если на стороне магазина предусмотрены скидки, эта сумма должна быть с учетом этих скидок.
-
-                + category (string) - название категории товара
-
-        + isConfirmationCodeRequired (boolean) - указывает, требуется ли подтверждение транзакции кодом, переданным в confirmationCode
-        + confirmationCode (string) - код подтверждения, введенный клиентом (или со слов клиента)
-
-            Отправка кода клиенту ранее должна быть запрошена вызовом метода /send-confirmation-code.
-
-            После успешного совершения покупки код аннулируется, воспользоваться им повторно нельзя.
+        + promocode (string) - промокод
+        + discountRoundStep (number) - кратность округления суммы всех скидок
 
 + Request (application/json)
 
@@ -1270,64 +1228,203 @@ HTTP-код ответа с описанием ошибки - ```200 OK```.
              * Информация обо всех возможных полях - выше.
              */
             {
-               "transaction":{
-                  "phoneNumber":"+79251112223",
-                  "id":"ATR0000000000001235",
-                  "executedAt":"2014-05-30T13:45:32+04:00",
-                  "shopCode":"ATR",
-                  "shopName":"Atrium",
-                  "cashier":"Иванов Иван Иванович",
-                  "cashierId":"A0000275",
-                  "totalAmount":50000.00,
-                  "loyaltyAction":"apply-collect",
-                  "applyBonuses":1000,
-                  "items":[
-                     {
-                        "sku":"MD775RU/A",
-                        "itemTitle":"Товар для продажи",
-                        "itemCount":2,
-                        "buyingPrice":42000.00,
-                        "price":50000.00
-                     }
-                  ]
-               }
+              "txid": "tx-001",
+              "calculationQuery": {
+                "client": {
+                  "card": "99991000"
+                },
+                "shop": {
+                  "code": "shop1",
+                  "name": "Shop 1"
+                },
+                "rows": [
+                  {
+                    "product": {
+                      "sku": "SKU1",
+                      "blackPrice": 1000.0
+                    },
+                    "qty": 1
+                  }
+                ],
+                "applyBonuses": 200
+              }
             }
 
 + Response 200 (application/json)
 
     + Attributes (object)
-        + confirmation (object)
-            + phoneNumber - номер телефона клиента
-            + purchaseId - номер транзакции покупки в системе партнера (чек в 1С)
-            + totalAmount - общая сумма чека
-            + paidAmount - сумма к оплате, оставшаяся после погашения части общей суммы примененными бонусами 
-            + bonuses - обновлённая информация о бонусах клиента
-                + applied - количество потраченных бонусов за транзакцию
-                + collected - количество накопленных бонусов
-                
-                    В зависимости от операции, поля applied и collected могут иметь значение 0.
-                
-                + pending - количество ожидаемых бонусов для использования
-                
-                    Поле pending будет содержать значение collected и ожидаемых бонусов до совершения транзакции.
-                
-                + available - количество доступных бонусов
+        + ticket (string, required) - тикет, уникальная строка, которая передается в вызовах /confirm-ticket или /discard-ticket
+
+        + clientBonuses (object) - состояние бонусного счета клиента после совершения покупки (прогнозируемое); эту информацию можно использовать для печати на чеке
+            + available (number, required) - доступно
+            + pending (number, required) - заморожено
+            + reserved (number, required) - зарезервировано
+            + total (number, required) - всего
+
+        + calculationResult (object) - результат расчета
+            + rows (array, required) - список строк чека, количество и порядок соответствует строкам из запроса
+                + (object)
+                    + id (string) - идентификатор строки как он передан в запросе
+                    + totalDiscount  (number, required) - сумма всех скидок по чеку
+                    + discounts (object, required)
+                        + auto (number, required) - автоскидка
+                        + manual (number, required) - ручная скидка
+                        + bonuses (number, required) - скидка по бонусам
+                        + promocode (number, required) - скидка по промокоду
+                        + offer (number, required) - скидка по акции
+                        + rounding (number, required) - округление
+
+                    + bonuses (object) - результат расчета бонусов
+                        + applied (number, required) - применено
+                        + collected (number, required) - накоплено
+
+                    + offer (object) - информация об акции, примененной к строке
+                        + id (number, required) - внутренний идентификатор акции
+                        + code (string, required) - код
+                        + name (string, required) - название
+
+            + summary (object, required) - cводная информация по чеку
+                + totalDiscount (number, required) - сумма всех скидок по чеку
+                + discounts (object)
+                    + auto (number, required) - автоскидка
+                    + manual (number, required) - ручная скидка
+                    + bonuses (number, required) - скидка по бонусам
+                    + promocode (number, required) - скидка по промокоду
+                    + offer (number, required) - скидка по акции
+                    + rounding (number, required) - округление
+
+            + bonuses (object) - результат расчета бонусов
+                + applied (number, required) - применено
+                + collected (number, required) - накоплено
+                + maxToApply (number, required) - максимальное количество бонусов, которое можно применить к чеку
+
+                    Это значение расчитано на основе доступных бонусов на счету клиента и правил применения бонусов к чеку.
+
+                + error (object) - ошибка применения бонусов
+                    + code (number, required) - код
+                    + description (string, required) - описание
+                    + hint (string) - детали ошибки
+
+            + promocode (object)
+                + applied (boolean, required) - применен или нет
+                + error (object) - ошибка применения бонусов
+                    + code (number, required) - код
+                    + description (string, required) - описание
+                    + hint (string) - детали ошибки
 
     + Body
 
             {
-               "confirmation":{
-                  "phoneNumber":"+79251112223",
-                  "purchaseId":"ATR0000000000001235",
-                  "totalAmount":50000.00,
-                  "paidAmount":49000.00,
-                  "bonuses":{
-                     "applied":1000,
-                     "collected":10,
-                     "pending":410,
-                     "available":0
+                "clientBonuses": {
+                  "available": 800,
+                  "pending": 160,
+                  "reserved": 0,
+                  "total": 960
+                },
+                "calculationResult": {
+                  "rows": [
+                    {
+                      "totalDiscount": 200,
+                      "discounts": {
+                        "auto": 0,
+                        "manual": 0,
+                        "bonuses": 200,
+                        "promocode": 0,
+                        "offer": 0
+                      },
+                      "bonuses": {
+                        "applied": 200,
+                        "collected": 160
+                      }
+                    }
+                  ],
+                  "summary": {
+                    "totalDiscount": 200,
+                    "discounts": {
+                      "auto": 0,
+                      "manual": 0,
+                      "bonuses": 200,
+                      "promocode": 0,
+                      "offer": 0
+                    }
+                  },
+                  "bonuses": {
+                    "applied": 200,
+                    "collected": 160,
+                    "maxToApply": 600
                   }
-               }
+                },
+                "ticket": "00000000-0000-0000-0000-000000000000"
+              }
+
+## 2.1 Подтверждение пречека [/confirm-ticket]
+
+Подтверждает успешное проведение чека и совершение продажи.
+
+### /confirm-ticket [POST]
++ Attributes (object)
+    + txid (string, required) - идентификатор чека
+    + sessionNum (string) - порядковый номер смены
+    + receiptNum (string) - порядковый номер чека
+    + ticket (string, required) - тикет, выданный после предварительного создания продажи
+
++ Request (application/json)
+
+    + Headers
+
+            Accept: application/json
+            X-Processing-Key: 00000000-0000-0000-0000-000000000000
+
+    + Body
+
+            /*
+             * Это пример тела сообщения, в нем представлены не все возможные поля.
+             * Информация обо всех возможных полях - выше.
+             */
+            {
+                "txid": "tx-001",
+                "ticket": "00000000-0000-0000-0000-000000000000"
+            }
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+
+    + Body
+
+            {
+            }
+
+## 2.2 Удаление пречека [/discard-ticket]
+
+Отменяет и удаляет предварительно созданную продажу на сервере. Освобождает зарезервированные за продажей бонусы и промокод.
+
+### /discard-ticket [POST]
++ Attributes (object)
+    + txid (string, required) - идентификатор чека
+    + ticket (string, required) - тикет, выданный после предварительного создания продажи
+
++ Request (application/json)
+
+    + Headers
+
+            Accept: application/json
+            X-Processing-Key: 00000000-0000-0000-0000-000000000000
+
+    + Body
+
+            {
+                "txid": "tx-001",
+                "ticket": "00000000-0000-0000-0000-000000000000"
+            }
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+
+    + Body
+
+            {
             }
 
 ## 3 Расчет возврата товара [/calculate-return]
